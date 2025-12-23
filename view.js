@@ -28,46 +28,121 @@ var x = (y) => {
 	var x = {}; __webpack_require__.d(x, y); return x
 } 
 var y = (x) => (() => (x))
-const interactivity_namespaceObject = x({ ["store"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.store) });
-;// ./node_modules/@wordpress/block-library/build-module/file/utils/index.js
-const browserSupportsPdfs = () => {
-  if (window.navigator.pdfViewerEnabled) {
-    return true;
-  }
-  if (window.navigator.userAgent.indexOf("Mobi") > -1) {
-    return false;
-  }
-  if (window.navigator.userAgent.indexOf("Android") > -1) {
-    return false;
-  }
-  if (window.navigator.userAgent.indexOf("Macintosh") > -1 && window.navigator.maxTouchPoints && window.navigator.maxTouchPoints > 2) {
-    return false;
-  }
-  if (!!(window.ActiveXObject || "ActiveXObject" in window) && !(createActiveXObject("AcroPDF.PDF") || createActiveXObject("PDF.PdfCtrl"))) {
-    return false;
-  }
-  return true;
-};
-const createActiveXObject = (type) => {
-  let ax;
-  try {
-    ax = new window.ActiveXObject(type);
-  } catch (e) {
-    ax = void 0;
-  }
-  return ax;
-};
+const interactivity_namespaceObject = x({ ["getContext"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.getContext), ["store"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.store), ["withSyncEvent"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.withSyncEvent) });
+;// ./node_modules/@wordpress/block-library/build-module/accordion/view.js
 
-
-;// ./node_modules/@wordpress/block-library/build-module/file/view.js
-
-
-(0,interactivity_namespaceObject.store)(
-  "core/file",
+let hashHandled = false;
+const { actions } = (0,interactivity_namespaceObject.store)(
+  "core/accordion",
   {
     state: {
-      get hasPdfPreview() {
-        return browserSupportsPdfs();
+      get isOpen() {
+        const { id, accordionItems } = (0,interactivity_namespaceObject.getContext)();
+        const accordionItem = accordionItems.find(
+          (item) => item.id === id
+        );
+        return accordionItem ? accordionItem.isOpen : false;
+      }
+    },
+    actions: {
+      toggle: () => {
+        const context = (0,interactivity_namespaceObject.getContext)();
+        const { id, autoclose, accordionItems } = context;
+        const accordionItem = accordionItems.find(
+          (item) => item.id === id
+        );
+        if (autoclose) {
+          accordionItems.forEach((item) => {
+            item.isOpen = item.id === id ? !accordionItem.isOpen : false;
+          });
+        } else {
+          accordionItem.isOpen = !accordionItem.isOpen;
+        }
+      },
+      handleKeyDown: (0,interactivity_namespaceObject.withSyncEvent)((event) => {
+        if (event.key !== "ArrowUp" && event.key !== "ArrowDown" && event.key !== "Home" && event.key !== "End") {
+          return;
+        }
+        event.preventDefault();
+        const context = (0,interactivity_namespaceObject.getContext)();
+        const { id, accordionItems } = context;
+        const currentIndex = accordionItems.findIndex(
+          (item) => item.id === id
+        );
+        let nextIndex;
+        switch (event.key) {
+          case "ArrowUp":
+            nextIndex = Math.max(0, currentIndex - 1);
+            break;
+          case "ArrowDown":
+            nextIndex = Math.min(
+              currentIndex + 1,
+              accordionItems.length - 1
+            );
+            break;
+          case "Home":
+            nextIndex = 0;
+            break;
+          case "End":
+            nextIndex = accordionItems.length - 1;
+            break;
+        }
+        const nextId = accordionItems[nextIndex].id;
+        const nextButton = document.getElementById(nextId);
+        if (nextButton) {
+          nextButton.focus();
+        }
+      }),
+      openPanelByHash: () => {
+        if (hashHandled || !window.location?.hash?.length) {
+          return;
+        }
+        const context = (0,interactivity_namespaceObject.getContext)();
+        const { id, accordionItems, autoclose } = context;
+        const hash = decodeURIComponent(
+          window.location.hash.slice(1)
+        );
+        const targetElement = window.document.getElementById(hash);
+        if (!targetElement) {
+          return;
+        }
+        const panelElement = window.document.querySelector(
+          '.wp-block-accordion-panel[aria-labelledby="' + id + '"]'
+        );
+        if (!panelElement || !panelElement.contains(targetElement)) {
+          return;
+        }
+        hashHandled = true;
+        if (autoclose) {
+          accordionItems.forEach((item) => {
+            item.isOpen = item.id === id;
+          });
+        } else {
+          const targetItem = accordionItems.find(
+            (item) => item.id === id
+          );
+          if (targetItem) {
+            targetItem.isOpen = true;
+          }
+        }
+        window.setTimeout(() => {
+          targetElement.scrollIntoView();
+        }, 0);
+      }
+    },
+    callbacks: {
+      initAccordionItems: () => {
+        const context = (0,interactivity_namespaceObject.getContext)();
+        const { id, openByDefault, accordionItems } = context;
+        accordionItems.push({
+          id,
+          isOpen: openByDefault
+        });
+        actions.openPanelByHash();
+      },
+      hashChange: () => {
+        hashHandled = false;
+        actions.openPanelByHash();
       }
     }
   },
