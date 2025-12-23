@@ -29,154 +29,283 @@ var x = (y) => {
 } 
 var y = (x) => (() => (x))
 const interactivity_namespaceObject = x({ ["getContext"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.getContext), ["getElement"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.getElement), ["store"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.store), ["withSyncEvent"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.withSyncEvent) });
-;// ./node_modules/@wordpress/block-library/build-module/navigation/view.js
+;// ./node_modules/@wordpress/block-library/build-module/image/view.js
 
-const focusableSelectors = [
-  "a[href]",
-  'input:not([disabled]):not([type="hidden"]):not([aria-hidden])',
-  "select:not([disabled]):not([aria-hidden])",
-  "textarea:not([disabled]):not([aria-hidden])",
-  "button:not([disabled]):not([aria-hidden])",
-  "[contenteditable]",
-  '[tabindex]:not([tabindex^="-"])'
-];
-document.addEventListener("click", () => {
-});
-const { state, actions } = (0,interactivity_namespaceObject.store)(
-  "core/navigation",
+let isTouching = false;
+let lastTouchTime = 0;
+const { state, actions, callbacks } = (0,interactivity_namespaceObject.store)(
+  "core/image",
   {
     state: {
+      currentImageId: null,
+      get currentImage() {
+        return state.metadata[state.currentImageId];
+      },
+      get overlayOpened() {
+        return state.currentImageId !== null;
+      },
       get roleAttribute() {
-        const ctx = (0,interactivity_namespaceObject.getContext)();
-        return ctx.type === "overlay" && state.isMenuOpen ? "dialog" : null;
+        return state.overlayOpened ? "dialog" : null;
       },
       get ariaModal() {
-        const ctx = (0,interactivity_namespaceObject.getContext)();
-        return ctx.type === "overlay" && state.isMenuOpen ? "true" : null;
+        return state.overlayOpened ? "true" : null;
       },
-      get ariaLabel() {
-        const ctx = (0,interactivity_namespaceObject.getContext)();
-        return ctx.type === "overlay" && state.isMenuOpen ? ctx.ariaLabel : null;
+      get enlargedSrc() {
+        return state.currentImage.uploadedSrc || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
       },
-      get isMenuOpen() {
-        return Object.values(state.menuOpenedBy).filter(Boolean).length > 0;
+      get figureStyles() {
+        return state.overlayOpened && `${state.currentImage.figureStyles?.replace(
+          /margin[^;]*;?/g,
+          ""
+        )};`;
       },
-      get menuOpenedBy() {
+      get imgStyles() {
+        return state.overlayOpened && `${state.currentImage.imgStyles?.replace(
+          /;$/,
+          ""
+        )}; object-fit:cover;`;
+      },
+      get imageButtonRight() {
+        const { imageId } = (0,interactivity_namespaceObject.getContext)();
+        return state.metadata[imageId].imageButtonRight;
+      },
+      get imageButtonTop() {
+        const { imageId } = (0,interactivity_namespaceObject.getContext)();
+        return state.metadata[imageId].imageButtonTop;
+      },
+      get isContentHidden() {
         const ctx = (0,interactivity_namespaceObject.getContext)();
-        return ctx.type === "overlay" ? ctx.overlayOpenedBy : ctx.submenuOpenedBy;
+        return state.overlayEnabled && state.currentImageId === ctx.imageId;
+      },
+      get isContentVisible() {
+        const ctx = (0,interactivity_namespaceObject.getContext)();
+        return !state.overlayEnabled && state.currentImageId === ctx.imageId;
       }
     },
     actions: {
-      openMenuOnHover() {
-        const { type, overlayOpenedBy } = (0,interactivity_namespaceObject.getContext)();
-        if (type === "submenu" && // Only open on hover if the overlay is closed.
-        Object.values(overlayOpenedBy || {}).filter(Boolean).length === 0) {
-          actions.openMenu("hover");
+      showLightbox() {
+        const { imageId } = (0,interactivity_namespaceObject.getContext)();
+        if (!state.metadata[imageId].imageRef?.complete) {
+          return;
+        }
+        state.scrollTopReset = document.documentElement.scrollTop;
+        state.scrollLeftReset = document.documentElement.scrollLeft;
+        state.overlayEnabled = true;
+        state.currentImageId = imageId;
+        callbacks.setOverlayStyles();
+      },
+      hideLightbox() {
+        if (state.overlayEnabled) {
+          state.overlayEnabled = false;
+          setTimeout(function() {
+            state.currentImage.buttonRef.focus({
+              preventScroll: true
+            });
+            state.currentImageId = null;
+          }, 450);
         }
       },
-      closeMenuOnHover() {
-        const { type, overlayOpenedBy } = (0,interactivity_namespaceObject.getContext)();
-        if (type === "submenu" && // Only close on hover if the overlay is closed.
-        Object.values(overlayOpenedBy || {}).filter(Boolean).length === 0) {
-          actions.closeMenu("hover");
-        }
-      },
-      openMenuOnClick() {
-        const ctx = (0,interactivity_namespaceObject.getContext)();
-        const { ref } = (0,interactivity_namespaceObject.getElement)();
-        ctx.previousFocus = ref;
-        actions.openMenu("click");
-      },
-      closeMenuOnClick() {
-        actions.closeMenu("click");
-        actions.closeMenu("focus");
-      },
-      openMenuOnFocus() {
-        actions.openMenu("focus");
-      },
-      toggleMenuOnClick() {
-        const ctx = (0,interactivity_namespaceObject.getContext)();
-        const { ref } = (0,interactivity_namespaceObject.getElement)();
-        if (window.document.activeElement !== ref) {
-          ref.focus();
-        }
-        const { menuOpenedBy } = state;
-        if (menuOpenedBy.click || menuOpenedBy.focus) {
-          actions.closeMenu("click");
-          actions.closeMenu("focus");
-        } else {
-          ctx.previousFocus = ref;
-          actions.openMenu("click");
-        }
-      },
-      handleMenuKeydown: (0,interactivity_namespaceObject.withSyncEvent)((event) => {
-        const { type, firstFocusableElement, lastFocusableElement } = (0,interactivity_namespaceObject.getContext)();
-        if (state.menuOpenedBy.click) {
+      handleKeydown: (0,interactivity_namespaceObject.withSyncEvent)((event) => {
+        if (state.overlayEnabled) {
+          if (event.key === "Tab") {
+            event.preventDefault();
+            const { ref } = (0,interactivity_namespaceObject.getElement)();
+            ref.querySelector("button").focus();
+          }
           if (event.key === "Escape") {
-            event.stopPropagation();
-            actions.closeMenu("click");
-            actions.closeMenu("focus");
-            return;
-          }
-          if (type === "overlay" && event.key === "Tab") {
-            if (event.shiftKey && window.document.activeElement === firstFocusableElement) {
-              event.preventDefault();
-              lastFocusableElement.focus();
-            } else if (!event.shiftKey && window.document.activeElement === lastFocusableElement) {
-              event.preventDefault();
-              firstFocusableElement.focus();
-            }
+            actions.hideLightbox();
           }
         }
       }),
-      handleMenuFocusout: (0,interactivity_namespaceObject.withSyncEvent)((event) => {
-        const { modal, type } = (0,interactivity_namespaceObject.getContext)();
-        if (event.relatedTarget === null || !modal?.contains(event.relatedTarget) && event.target !== window.document.activeElement && type === "submenu") {
-          actions.closeMenu("click");
-          actions.closeMenu("focus");
+      handleTouchMove: (0,interactivity_namespaceObject.withSyncEvent)((event) => {
+        if (state.overlayEnabled) {
+          event.preventDefault();
         }
       }),
-      openMenu(menuOpenedOn = "click") {
-        const { type } = (0,interactivity_namespaceObject.getContext)();
-        state.menuOpenedBy[menuOpenedOn] = true;
-        if (type === "overlay") {
-          document.documentElement.classList.add("has-modal-open");
-        }
+      handleTouchStart() {
+        isTouching = true;
       },
-      closeMenu(menuClosedOn = "click") {
-        const ctx = (0,interactivity_namespaceObject.getContext)();
-        state.menuOpenedBy[menuClosedOn] = false;
-        if (!state.isMenuOpen) {
-          if (ctx.modal?.contains(window.document.activeElement)) {
-            ctx.previousFocus?.focus();
-          }
-          ctx.modal = null;
-          ctx.previousFocus = null;
-          if (ctx.type === "overlay") {
-            document.documentElement.classList.remove(
-              "has-modal-open"
+      handleTouchEnd() {
+        lastTouchTime = Date.now();
+        isTouching = false;
+      },
+      handleScroll() {
+        if (state.overlayOpened) {
+          if (!isTouching && Date.now() - lastTouchTime > 450) {
+            window.scrollTo(
+              state.scrollLeftReset,
+              state.scrollTopReset
             );
           }
         }
       }
     },
     callbacks: {
-      initMenu() {
-        const ctx = (0,interactivity_namespaceObject.getContext)();
+      setOverlayStyles() {
+        if (!state.overlayEnabled) {
+          return;
+        }
+        let {
+          naturalWidth,
+          naturalHeight,
+          offsetWidth: originalWidth,
+          offsetHeight: originalHeight
+        } = state.currentImage.imageRef;
+        let { x: screenPosX, y: screenPosY } = state.currentImage.imageRef.getBoundingClientRect();
+        const naturalRatio = naturalWidth / naturalHeight;
+        let originalRatio = originalWidth / originalHeight;
+        if (state.currentImage.scaleAttr === "contain") {
+          if (naturalRatio > originalRatio) {
+            const heightWithoutSpace = originalWidth / naturalRatio;
+            screenPosY += (originalHeight - heightWithoutSpace) / 2;
+            originalHeight = heightWithoutSpace;
+          } else {
+            const widthWithoutSpace = originalHeight * naturalRatio;
+            screenPosX += (originalWidth - widthWithoutSpace) / 2;
+            originalWidth = widthWithoutSpace;
+          }
+        }
+        originalRatio = originalWidth / originalHeight;
+        let imgMaxWidth = parseFloat(
+          state.currentImage.targetWidth !== "none" ? state.currentImage.targetWidth : naturalWidth
+        );
+        let imgMaxHeight = parseFloat(
+          state.currentImage.targetHeight !== "none" ? state.currentImage.targetHeight : naturalHeight
+        );
+        let imgRatio = imgMaxWidth / imgMaxHeight;
+        let containerMaxWidth = imgMaxWidth;
+        let containerMaxHeight = imgMaxHeight;
+        let containerWidth = imgMaxWidth;
+        let containerHeight = imgMaxHeight;
+        if (naturalRatio.toFixed(2) !== imgRatio.toFixed(2)) {
+          if (naturalRatio > imgRatio) {
+            const reducedHeight = imgMaxWidth / naturalRatio;
+            if (imgMaxHeight - reducedHeight > imgMaxWidth) {
+              imgMaxHeight = reducedHeight;
+              imgMaxWidth = reducedHeight * naturalRatio;
+            } else {
+              imgMaxHeight = imgMaxWidth / naturalRatio;
+            }
+          } else {
+            const reducedWidth = imgMaxHeight * naturalRatio;
+            if (imgMaxWidth - reducedWidth > imgMaxHeight) {
+              imgMaxWidth = reducedWidth;
+              imgMaxHeight = reducedWidth / naturalRatio;
+            } else {
+              imgMaxWidth = imgMaxHeight * naturalRatio;
+            }
+          }
+          containerWidth = imgMaxWidth;
+          containerHeight = imgMaxHeight;
+          imgRatio = imgMaxWidth / imgMaxHeight;
+          if (originalRatio > imgRatio) {
+            containerMaxWidth = imgMaxWidth;
+            containerMaxHeight = containerMaxWidth / originalRatio;
+          } else {
+            containerMaxHeight = imgMaxHeight;
+            containerMaxWidth = containerMaxHeight * originalRatio;
+          }
+        }
+        if (originalWidth > containerWidth || originalHeight > containerHeight) {
+          containerWidth = originalWidth;
+          containerHeight = originalHeight;
+        }
+        let horizontalPadding = 0;
+        if (window.innerWidth > 480) {
+          horizontalPadding = 80;
+        } else if (window.innerWidth > 1920) {
+          horizontalPadding = 160;
+        }
+        const verticalPadding = 80;
+        const targetMaxWidth = Math.min(
+          window.innerWidth - horizontalPadding,
+          containerWidth
+        );
+        const targetMaxHeight = Math.min(
+          window.innerHeight - verticalPadding,
+          containerHeight
+        );
+        const targetContainerRatio = targetMaxWidth / targetMaxHeight;
+        if (originalRatio > targetContainerRatio) {
+          containerWidth = targetMaxWidth;
+          containerHeight = containerWidth / originalRatio;
+        } else {
+          containerHeight = targetMaxHeight;
+          containerWidth = containerHeight * originalRatio;
+        }
+        const containerScale = originalWidth / containerWidth;
+        const lightboxImgWidth = imgMaxWidth * (containerWidth / containerMaxWidth);
+        const lightboxImgHeight = imgMaxHeight * (containerHeight / containerMaxHeight);
+        state.overlayStyles = `
+					--wp--lightbox-initial-top-position: ${screenPosY}px;
+					--wp--lightbox-initial-left-position: ${screenPosX}px;
+					--wp--lightbox-container-width: ${containerWidth + 1}px;
+					--wp--lightbox-container-height: ${containerHeight + 1}px;
+					--wp--lightbox-image-width: ${lightboxImgWidth}px;
+					--wp--lightbox-image-height: ${lightboxImgHeight}px;
+					--wp--lightbox-scale: ${containerScale};
+					--wp--lightbox-scrollbar-width: ${window.innerWidth - document.documentElement.clientWidth}px;
+				`;
+      },
+      setButtonStyles() {
         const { ref } = (0,interactivity_namespaceObject.getElement)();
-        if (state.isMenuOpen) {
-          const focusableElements = ref.querySelectorAll(focusableSelectors);
-          ctx.modal = ref;
-          ctx.firstFocusableElement = focusableElements[0];
-          ctx.lastFocusableElement = focusableElements[focusableElements.length - 1];
+        if (!ref) {
+          return;
+        }
+        const { imageId } = (0,interactivity_namespaceObject.getContext)();
+        state.metadata[imageId].imageRef = ref;
+        state.metadata[imageId].currentSrc = ref.currentSrc;
+        const {
+          naturalWidth,
+          naturalHeight,
+          offsetWidth,
+          offsetHeight
+        } = ref;
+        if (naturalWidth === 0 || naturalHeight === 0) {
+          return;
+        }
+        const figure = ref.parentElement;
+        const figureWidth = ref.parentElement.clientWidth;
+        let figureHeight = ref.parentElement.clientHeight;
+        const caption = figure.querySelector("figcaption");
+        if (caption) {
+          const captionComputedStyle = window.getComputedStyle(caption);
+          if (!["absolute", "fixed"].includes(
+            captionComputedStyle.position
+          )) {
+            figureHeight = figureHeight - caption.offsetHeight - parseFloat(captionComputedStyle.marginTop) - parseFloat(captionComputedStyle.marginBottom);
+          }
+        }
+        const buttonOffsetTop = figureHeight - offsetHeight;
+        const buttonOffsetRight = figureWidth - offsetWidth;
+        let imageButtonTop = buttonOffsetTop + 16;
+        let imageButtonRight = buttonOffsetRight + 16;
+        if (state.metadata[imageId].scaleAttr === "contain") {
+          const naturalRatio = naturalWidth / naturalHeight;
+          const offsetRatio = offsetWidth / offsetHeight;
+          if (naturalRatio >= offsetRatio) {
+            const referenceHeight = offsetWidth / naturalRatio;
+            imageButtonTop = (offsetHeight - referenceHeight) / 2 + buttonOffsetTop + 16;
+            imageButtonRight = buttonOffsetRight + 16;
+          } else {
+            const referenceWidth = offsetHeight * naturalRatio;
+            imageButtonTop = buttonOffsetTop + 16;
+            imageButtonRight = (offsetWidth - referenceWidth) / 2 + buttonOffsetRight + 16;
+          }
+        }
+        state.metadata[imageId].imageButtonTop = imageButtonTop;
+        state.metadata[imageId].imageButtonRight = imageButtonRight;
+      },
+      setOverlayFocus() {
+        if (state.overlayEnabled) {
+          const { ref } = (0,interactivity_namespaceObject.getElement)();
+          ref.focus();
         }
       },
-      focusFirstElement() {
+      initTriggerButton() {
+        const { imageId } = (0,interactivity_namespaceObject.getContext)();
         const { ref } = (0,interactivity_namespaceObject.getElement)();
-        if (state.isMenuOpen) {
-          const focusableElements = ref.querySelectorAll(focusableSelectors);
-          focusableElements?.[0]?.focus();
-        }
+        state.metadata[imageId].buttonRef = ref;
       }
     }
   },
