@@ -1,46 +1,76 @@
+import * as __WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__ from "@wordpress/interactivity";
+/******/ // The require scope
+/******/ var __webpack_require__ = {};
+/******/ 
+/************************************************************************/
+/******/ /* webpack/runtime/define property getters */
+/******/ (() => {
+/******/ 	// define getter functions for harmony exports
+/******/ 	__webpack_require__.d = (exports, definition) => {
+/******/ 		for(var key in definition) {
+/******/ 			if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 				Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 			}
+/******/ 		}
+/******/ 	};
+/******/ })();
+/******/ 
+/******/ /* webpack/runtime/hasOwnProperty shorthand */
+/******/ (() => {
+/******/ 	__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ })();
+/******/ 
+/************************************************************************/
 var __webpack_exports__ = {};
-let formSettings;
-try {
-  formSettings = JSON.parse(
-    document.getElementById(
-      "wp-script-module-data-@wordpress/block-library/form/view"
-    )?.textContent
-  );
-} catch {
-}
-document.querySelectorAll("form.wp-block-form").forEach(function(form) {
-  if (!formSettings || !form.action || !form.action.startsWith("mailto:")) {
-    return;
+
+;// external "@wordpress/interactivity"
+var x = (y) => {
+	var x = {}; __webpack_require__.d(x, y); return x
+} 
+var y = (x) => (() => (x))
+const interactivity_namespaceObject = x({ ["store"]: () => (__WEBPACK_EXTERNAL_MODULE__wordpress_interactivity_8e89b257__.store) });
+;// ./node_modules/@wordpress/block-library/build-module/file/utils/index.js
+const browserSupportsPdfs = () => {
+  if (window.navigator.pdfViewerEnabled) {
+    return true;
   }
-  const redirectNotification = (status) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    urlParams.append("wp-form-result", status);
-    window.location.search = urlParams.toString();
-  };
-  form.addEventListener("submit", async function(event) {
-    event.preventDefault();
-    const formData = Object.fromEntries(new FormData(form).entries());
-    formData.formAction = form.action;
-    formData._ajax_nonce = formSettings.nonce;
-    formData.action = formSettings.action;
-    formData._wp_http_referer = window.location.href;
-    formData.formAction = form.action;
-    try {
-      const response = await fetch(formSettings.ajaxUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams(formData).toString()
-      });
-      if (response.ok) {
-        redirectNotification("success");
-      } else {
-        redirectNotification("error");
+  if (window.navigator.userAgent.indexOf("Mobi") > -1) {
+    return false;
+  }
+  if (window.navigator.userAgent.indexOf("Android") > -1) {
+    return false;
+  }
+  if (window.navigator.userAgent.indexOf("Macintosh") > -1 && window.navigator.maxTouchPoints && window.navigator.maxTouchPoints > 2) {
+    return false;
+  }
+  if (!!(window.ActiveXObject || "ActiveXObject" in window) && !(createActiveXObject("AcroPDF.PDF") || createActiveXObject("PDF.PdfCtrl"))) {
+    return false;
+  }
+  return true;
+};
+const createActiveXObject = (type) => {
+  let ax;
+  try {
+    ax = new window.ActiveXObject(type);
+  } catch (e) {
+    ax = void 0;
+  }
+  return ax;
+};
+
+
+;// ./node_modules/@wordpress/block-library/build-module/file/view.js
+
+
+(0,interactivity_namespaceObject.store)(
+  "core/file",
+  {
+    state: {
+      get hasPdfPreview() {
+        return browserSupportsPdfs();
       }
-    } catch (error) {
-      redirectNotification("error");
     }
-  });
-});
+  },
+  { lock: true }
+);
 
